@@ -1,0 +1,8 @@
+Écran: 27
+Résolution: 4K UHD (3840 x 2160)
+Fréquence de rafraîchissement: 60 Hz
+Temps de résponse: 5 ms
+Connectivité: HDMI x2, Display Port x2
+Type de technologie: FreeSync
+Type de panneau: IPS
+Part Number: 27UD69-W
