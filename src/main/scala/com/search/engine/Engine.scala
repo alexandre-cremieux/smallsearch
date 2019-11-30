@@ -1,6 +1,8 @@
 package com.search.engine
 
-import com.search.model.{EmptyToken, Document, SearchTree, SomeToken, StringItem, Token}
+import com.search.model.{
+  Document, EmptyToken, SearchTree, SomeToken, StringItem, TInfo, Token
+}
 
 import scala.collection.parallel.mutable.ParMap
 
@@ -50,13 +52,8 @@ object Engine {
    * @param items The items to add into the document
    */
   def index(ref: String, items: Iterator[String]): Unit = {
-    val doc = new Document(ref)
-    var i = 0
-    while (items.hasNext) {
-      doc.tree += Token(items.next(), i)
-      i += 1
-    }
-    docs.put(ref, doc)
+    val tokens = items.zipWithIndex.map({case (item, order) => Token(item, ref, order)})
+    docs.put(ref, new Document(ref, tokens.toList))
   }
 
   /**
@@ -69,8 +66,7 @@ object Engine {
   private
   def search(matcher: MatchSelect, items: List[String], sanitizer: String => String):
   SearchResult = {
-    val idx = for(i <- 0 until items.size) yield i
-    val tokens = items.zip(idx).map({
+    val tokens = items.zipWithIndex.map({
       case (item, order) =>
         val token = Token(sanitizer(item))
         Token(token.get, 0, order)
@@ -136,10 +132,12 @@ object Engine {
    *         should continue (false) or stop (true) and the token represents the item
    *         that corresponds to the match.
    */
-  private def exactMatch(sanitizer: Token[StringItem] => Token[StringItem])
-                        (l: Token[StringItem], r: Token[StringItem]): (Boolean, Token[StringItem]) = {
+  private def exactMatch
+  (sanitizer: Token[StringItem] => Token[StringItem])
+  (l: Token[StringItem], r: Token[StringItem]):
+  (Boolean, Token[StringItem]) = {
     if (l != sanitizer(r)) (false, EmptyToken)
-    else (true, Token(l.get, 1, r.order))
+    else (true, Token(r, 1))
   }
 
   /**
@@ -149,7 +147,7 @@ object Engine {
    *
    * Note: The algorithm can be quite slow with long tokens, it will not be suitable for
    * search on long string. The binary search tree model implies that some search
-   * will not be correctly complete, especially when the first letter of a word is
+   * will not be correctly completed, especially when the first letter of a word is
    * missing and make the comparison fail by defining the route to parse within the graph
    * exposed by a binary search tree.
    *
@@ -160,25 +158,28 @@ object Engine {
    *         should continue (false) or stop (true) and the token represents the item
    *         with the best score..
    */
-  private def fuzzyMatch(sanitizer: Token[StringItem] => Token[StringItem])
-                        (l: Token[StringItem], r: Token[StringItem]): (Boolean, Token[StringItem]) = {
+  private def fuzzyMatch
+  (sanitizer: Token[StringItem] => Token[StringItem])
+  (l: Token[StringItem], r: Token[StringItem]):
+  (Boolean, Token[StringItem]) = {
     val sanitized = sanitizer(r)
     val distance = {
       if (l == sanitized) 0
       else {
-        Token.levenshtein(l,
+        Token.levenshtein(
+          l,
           if (sanitized.length <= 5) sanitized else sanitized.substring(0, 5)
         )
       }
     }
-    if (distance == 0) (true, Token(r.get, 1, r.order))
+    if (distance == 0) (true, Token(r, 1))
     else l match {
-      case SomeToken(item, scores, _) =>
+      case SomeToken(item, info) =>
         val score = (item.item.length - distance) / item.item.length.toDouble
-        if (score < scores(0)) {
-          (false, Token(r.get, scores, r.order))
+        if (score < info.head.score) {
+          (false, l)
         } else {
-          (score > 0.8, Token(r.get, List(score), r.order))
+          (score > 0.8, Token(r, score))
         }
     }
   }

@@ -7,11 +7,14 @@ package com.search.model
  *
  * @param name Document name.
  */
-class Document(name: String) {
+class Document(name: String, tokens: List[Token[StringItem]]) {
 
   /*Name getter*/
   def name(): String = this.name
 
   /*The search tree.*/
-  var tree: SearchTree[StringItem] = Leaf()
+  var tree: SearchTree[StringItem] =
+    tokens
+      .map(t => SearchTree(t))
+      .reduceLeft((l, r) => l ++ r)
 }

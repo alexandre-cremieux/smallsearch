@@ -62,7 +62,7 @@ class TokenTest extends UnitSpec {
     assert(caughtGet.isInstanceOf[NoSuchElementException])
 
     val caughtOrder = intercept[Exception] {
-      TestValues.emptyToken.order
+      TestValues.emptyToken.info.head.order
       fail()
     }
     assert(caughtOrder.isInstanceOf[NoSuchElementException])
@@ -87,20 +87,20 @@ class TokenTest extends UnitSpec {
   }
 
   "Order of non empty String" should "exist if provided" in {
-    assert(Token("Foo", 3).order != List.empty)
-    assert(Token("Bar", 2).order != List.empty)
-    assert(Token("Foo", 1).order != List.empty)
+    assert(Token("Foo", 3).info.head.order != List.empty)
+    assert(Token("Bar", 2).info.head.order != List.empty)
+    assert(Token("Foo", 1).info.head.order != List.empty)
   }
 
   "String Token" should "be a monad" in {
-    def f(x: StringItem, o: List[Int]) = Token(x + ", Foo", o)
-    def g(x: StringItem, o: List[Int]) = Token(x + ", Bar", o)
+    def f(x: StringItem, o: List[TInfo]) = Token(x + ", Foo", o)
+    def g(x: StringItem, o: List[TInfo]) = Token(x + ", Bar", o)
 
     // Map and flatMap
     assert(
-      Token("Hello").map((i, s, o) => (i + ", Foo", s, o))
+      Token("Hello").map((i, info) => (i + ", Foo", info))
         ==
-        Token("Hello").flatMap((s, o) => Token(s + ", Foo", o))
+        Token("Hello").flatMap((s, i) => Token(s + ", Foo", i))
     )
     // Associativity
     assert(
@@ -112,7 +112,7 @@ class TokenTest extends UnitSpec {
     assert(
       TestValues.lyricsToken.flatMap(f)
         ==
-        f(TestValues.lyricsToken.get, TestValues.lyricsToken.order)
+        f(TestValues.lyricsToken.get, TestValues.lyricsToken.info)
     )
     // Right Unit
     assert(

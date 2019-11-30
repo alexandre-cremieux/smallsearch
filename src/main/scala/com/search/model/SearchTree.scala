@@ -34,7 +34,7 @@ trait SearchTree[A <: Ordered[A]] {
   def score: Double = this match {
     case Leaf() => 0
     case SomeSearchTree(item, l, r) => ParSeq(
-      item.scores.sum,
+      item.info.iterator.map(i => i.score).sum,
       l.score,
       r.score
     ).sum
@@ -234,10 +234,10 @@ trait SearchTree[A <: Ordered[A]] {
    */
   def collectByOrder(): List[Token[A]] = {
     def comparator(l: Token[A], r: Token[A]): Int = (l, r) match {
-      case (SomeToken(_, _, Nil), SomeToken(_, _, Nil)) => 0
-      case (SomeToken(_, _, _), SomeToken(_, _, Nil)) => 1
-      case (SomeToken(_, _, Nil), SomeToken(_, _, _)) => -1
-      case (SomeToken(_, _, x :: _), SomeToken(_, _, y :: _)) => x.compareTo(y)
+      case (SomeToken(_, Nil), SomeToken(_, Nil)) => 0
+      case (SomeToken(_, _), SomeToken(_, Nil)) => 1
+      case (SomeToken(_, Nil), SomeToken(_, _)) => -1
+      case (SomeToken(_, x :: _), SomeToken(_, y :: _)) => x.order.compareTo(y.order)
     }
     this.sort(comparator, token => token.flatOrders())
   }
@@ -307,7 +307,7 @@ case class Leaf[A <: Ordered[A]]() extends SearchTree[A] {
  */
 case class SomeSearchTree[A <: Ordered[A]]
 (token: Token[A], left: SearchTree[A], right: SearchTree[A])
-  extends SearchTree[A] {
+extends SearchTree[A] {
 
   override def isEmpty: Boolean = false
 
@@ -318,12 +318,7 @@ case class SomeSearchTree[A <: Ordered[A]]
     } else if (token > this.token) {
       SearchTree(this.token, left, right + token)
     } else {
-      val local = Token[A](
-        this.token.get,
-        this.token.scores ++ token.scores,
-        (this.token.order ++ token.order).distinct
-      )
-      SearchTree(local, left, right)
+      SearchTree(this.token ++ token, left, right)
     }
   }
 
@@ -377,7 +372,12 @@ case class SomeSearchTree[A <: Ordered[A]]
         case (EmptyToken, EmptyToken) => EmptyToken
         case (EmptyToken, _) => subResult
         case (_, EmptyToken) => lResult
-        case _ => if (subResult.scores.sum > lResult.scores.sum) subResult else lResult
+        case _ =>
+          if (TInfo.compareScore(subResult.info, lResult.info) > 0) {
+            subResult
+          } else {
+            lResult
+          }
       }
     }
   }
