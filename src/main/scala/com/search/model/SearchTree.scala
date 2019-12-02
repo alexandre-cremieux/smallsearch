@@ -191,14 +191,15 @@ trait SearchTree[A <: Ordered[A]] {
     else {
       if (tokens.size <= 2) {
         val search: Token[A] => Token[A] = this.search(f)
-        tokens.map(search)
+        tokens
+          .map(search)
           .filter(t => !t.isEmpty)
       } else {
         val lists = tokens.splitAt(tokens.size / 2)
         ParSeq(
           this.searchToList(f)(lists._1),
           this.searchToList(f)(lists._2)
-        ).reduce(_ ++ _)
+        ).reduce(_ ++ _).distinct
       }
     }
   }
@@ -234,6 +235,9 @@ trait SearchTree[A <: Ordered[A]] {
    */
   def collectByOrder(): List[Token[A]] = {
     def comparator(l: Token[A], r: Token[A]): Int = (l, r) match {
+      case (EmptyToken, EmptyToken) => 0
+      case (SomeToken(_, _), EmptyToken) => -1
+      case (EmptyToken, SomeToken(_, _)) => 1
       case (SomeToken(_, Nil), SomeToken(_, Nil)) => 0
       case (SomeToken(_, _), SomeToken(_, Nil)) => 1
       case (SomeToken(_, Nil), SomeToken(_, _)) => -1
@@ -313,13 +317,14 @@ extends SearchTree[A] {
 
   override def +(token: Token[A]): SearchTree[A] = token match {
     case EmptyToken => this
-    case token: Token[A] => if (token < this.token) {
-      SearchTree(this.token, left + token, right)
-    } else if (token > this.token) {
-      SearchTree(this.token, left, right + token)
-    } else {
-      SearchTree(this.token ++ token, left, right)
-    }
+    case token: Token[A] =>
+      if (token < this.token) {
+        SearchTree(this.token, left + token, right)
+      } else if (token > this.token) {
+        SearchTree(this.token, left, right + token)
+      } else {
+        SearchTree(Token.merge(this.token, token), left, right)
+      }
   }
 
   override def -(token: Token[A]): SearchTree[A] = token match {
@@ -358,14 +363,15 @@ extends SearchTree[A] {
     val localResult = scoring(init, this.token)
     if (localResult._1) localResult._2
     else {
-      val lesser = this.token.get.toString.toUpperCase() > init.get.toString.toUpperCase()
-      val subResult = if (!this.left.isEmpty && lesser) {
-        this.left.search(scoring)(init)
-      } else if (!this.right.isEmpty) {
-        this.right.search(scoring)(init)
-      } else {
-        EmptyToken
-      }
+      val lesser = this.token > init
+      val subResult =
+        if (!this.left.isEmpty && lesser) {
+          this.left.search(scoring)(init)
+        } else if (!this.right.isEmpty) {
+          this.right.search(scoring)(init)
+        } else {
+          EmptyToken
+        }
 
       val lResult = localResult._2
       (lResult, subResult) match {

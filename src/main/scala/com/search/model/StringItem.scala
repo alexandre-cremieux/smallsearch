@@ -12,7 +12,11 @@ import scala.math.Ordered
  *
  * @param item The String to wrap.
  */
-case class StringItem(item: String) extends Ordered[StringItem]{
+case class StringItem(item: String, upper: String) extends Ordered[StringItem]{
+
+  def this(item: String) {
+    this(item, item.toUpperCase)
+  }
 
   /**Return the wrapped String*/
   def get:String = this.item
@@ -33,7 +37,7 @@ case class StringItem(item: String) extends Ordered[StringItem]{
    *   - `x > 0` when  `this > that`
    *
    */
-  override def compare(that: StringItem): Int = this.item.compareTo(that.get)
+  override def compare(that: StringItem): Int = this.upper.compareTo(that.upper)
 
   /** Returns true if `this` is less than `that`
    */
@@ -56,7 +60,7 @@ case class StringItem(item: String) extends Ordered[StringItem]{
   override def compareTo(that: StringItem): Int = this.compare(that)
 
   override def equals(that: Any): Boolean = that match {
-    case StringItem(item) => this.get == item
+    case StringItem(item, _) => this.item == item
     case _ => this.get == that
   }
 }
