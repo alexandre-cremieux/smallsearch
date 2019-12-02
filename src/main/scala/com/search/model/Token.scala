@@ -12,7 +12,7 @@ case class TInfo(doc: String, order: Int, weight: Double, score: Double)
  */
 object TInfo {
   def addScore(info: TInfo, s: Double): TInfo = TInfo(
-    info.doc, info.order, info.weight, info.score
+    info.doc, info.order, info.weight, info.score + s
   )
   def addScore(info: List[TInfo], s: Double): List[TInfo] =
     info.map(i => TInfo.addScore(i, s))
@@ -43,7 +43,7 @@ object TInfo {
  * @tparam A The type of the item to wrap.
  * @see [[scala.Option]]
  */
-sealed trait Token[+A] {
+sealed abstract class Token[+A] {
 
   /**Check if the token is empty*/
   def isEmpty: Boolean
@@ -69,25 +69,14 @@ sealed trait Token[+A] {
   def >[B >: A](that: Token[B])(implicit ev$1: B => Ordered[B]): Boolean =
     this.compare(that) > 0
 
-  /**
-   * Merge the info of two tokens together into a new token with equal item.
-   * This method is equal to <code>SomeToken(item, this.info ++ that.info)
-   * @param that The token to merge.
-   * @tparam B The inner type of the token.
-   * @return A new token with same item and merged document.
-   */
-  def ++[B >: A](that: Token[B])(implicit ev$1: B => Ordered[B]): Token[B] =
-    this.merge(that)
-
   /**Returns the result of applying f to this if non empty.*/
   @inline final def map[B <: Ordered[B]](f: (A, List[TInfo]) => (B, List[TInfo])):
-  Token[B] =
-    if (this.isEmpty) {
-      EmptyToken
-    } else {
-      val (t, i) = f(this.get, this.info)
-      SomeToken[B](t, i)
-    }
+  Token[B] = this match {
+    case EmptyToken => EmptyToken
+    case SomeToken(i, info) =>
+      val (bi, bInfo) = f(i, info)
+      SomeToken(bi, bInfo)
+  }
 
   /**Returns the result of applying f to this if non empty.*/
   @inline final def flatMap[B <: Ordered[B]](f: (A, List[TInfo]) => Token[B]):
@@ -108,37 +97,6 @@ sealed trait Token[+A] {
    * @return A list of tokens holding only one order.
    */
   def flatOrders(): List[Token[A]] = List()
-
-  def merge[B >: A](that: Token[B])(implicit ev$1: B => Ordered[B]): Token[B] =
-    if (this.isEmpty) that
-    else {
-      that match {
-        case EmptyToken => this
-        case SomeToken(i, info) => if (i != this.get) {
-          throw new IllegalArgumentException("Item are not equals")
-        } else {
-          val nInfo = this.info ++ info
-          SomeToken(this.get, nInfo)
-        }
-      }
-    }
-
-  /**
-   * Merge by adding a score to each of the document info of each of the two token
-   */
-  def merge[B >: A](that: Token[B], score: Double)(implicit ev$1: B => Ordered[B]):
-  Token[B] = this match {
-    case EmptyToken =>
-      if (that.isEmpty) Token.empty
-      else SomeToken(that.get, TInfo.addScore(that.info, score))
-    case SomeToken(t, i) =>
-      if (that.isEmpty) {
-        SomeToken(t, TInfo.addScore(that.info, score))
-      } else {
-        SomeToken(t, i.map(d => TInfo.addScore(d, score))) ++
-          SomeToken(t, TInfo.addScore(that.info, score))
-      }
-  }
 }
 
 /**
@@ -209,15 +167,16 @@ case class SomeToken[A <: Ordered[A]](item: A, info: List[TInfo]) extends Token[
 
 /**Utilities object for the token class*/
 object Token {
-
   import scala.language.implicitConversions
 
-  def apply[A <: Ordered[A]](item: A): Token[A] = new SomeToken[A](item, Nil)
+  /**
+   * Return an empty token of type A
+   * @tparam A The awaited type.
+   * @return An empty token.
+   */
+  def empty[A <: Ordered[A]]: Token[A] = EmptyToken
 
-  def apply[A <: Ordered[A]](token: Token[A], score: Double): Token[A] = token match {
-    case EmptyToken => EmptyToken
-    case SomeToken(item, info) => new SomeToken[A](item, TInfo.addScore(info, score))
-  }
+  def apply[A <: Ordered[A]](item: A): Token[A] = new SomeToken[A](item, Nil)
 
   def apply[A <: Ordered[A]](item: A, score: Double, order: Int):
   Token[A] = {
@@ -227,14 +186,29 @@ object Token {
     }
   }
 
+  /**
+   * Add a score to token's info.
+   * @param token The token to which the score should be added
+   * @param score
+   * @tparam A
+   * @return A new token.
+   */
+  def apply[A <: Ordered[A]](token: Token[A], score: Double):
+  Token[A] = {
+    token match {
+      case EmptyToken => EmptyToken
+      case SomeToken(item, info) => Token(item, TInfo.addScore(info, score))
+    }
+  }
+
   def apply(item: String): Token[StringItem] = item match {
     case "" => Token.empty
     case _ => new SomeToken[StringItem](new StringItem(item), Nil)
   }
 
-  def apply(item: String, doc: String, order: Int): Token[StringItem] = item match {
+  def apply(doc: String, item: String, order: Int): Token[StringItem] = item match {
     case "" => Token.empty
-    case _ => new SomeToken[StringItem](StringItem(item), List(TInfo(doc, order)))
+    case _ => new SomeToken[StringItem](new StringItem(item), List(TInfo(doc, order)))
   }
 
   /**
@@ -261,12 +235,15 @@ object Token {
     case _ => new SomeToken[A](item, info)
   }
 
-  /**
-   * Return an empty token of type A
-   * @tparam A The awaited type.
-   * @return An empty token.
-   */
-  def empty[A <: Ordered[A]]: Token[A] = EmptyToken
+  def merge[A <: Ordered[A]](l: Token[A], r: Token[A]): Token[A] = l match {
+    case EmptyToken => r
+    case SomeToken(i, info) => if (l.compare(r) != 0) {
+      throw new IllegalArgumentException("Item are not equals")
+    } else {
+      val nInfo = info ++ r.info
+      SomeToken(i, nInfo.distinct)
+    }
+  }
 
   /**Implicit conversion of a String to a Token of type String.
    *
@@ -374,7 +351,7 @@ object Token {
           ParSeq(
             1 + lev((i - 1, j)),
             1 + lev((i, j - 1)),
-            lev((i - 1, j - 1)) + (if (lString(i - 1) != rString(j - 1)) 1 else 0)).min
+            lev((i - 1, j - 1)) + (if (lString(i - 1).upper != rString(j - 1).upper) 1 else 0)).min
       })
     }
     lev((lString.size, rString.size))
