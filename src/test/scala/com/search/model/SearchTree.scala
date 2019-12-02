@@ -25,7 +25,7 @@ class SearchTreeTest extends UnitSpec {
 
   var otherTree: SearchTree[StringItem] = SearchTree("When", 5) +
     Token(doc, "The", 6) +
-    Token("Night", List(TInfo(doc, 5), TInfo(doc, 5))) +
+    Token("Night", List(TInfo(doc, 5), TInfo(doc, 10))) +
     Token(doc, "Has", 8) +
     Token(doc, "Come", 9) ++ tree
 
@@ -75,11 +75,11 @@ class SearchTreeTest extends UnitSpec {
     val result = otherTree.search((token, local) => local match {
       case EmptyToken => (false, token)
       case SomeToken(item, _) =>
-        if (item == token.get) (true, Token(local, 1.0))
+        if (item == token.get) (true, Token(local.get, TInfo.addScore(local.info, 1)))
         else (false, EmptyToken)
     })(Token("World!", List()))
     result match {
-      case SomeToken(_, Nil) => throw IllegalStateException
+      case SomeToken(_, Nil) => throw new IllegalStateException
       case SomeToken(item, info) =>
         assert(info.head.score == 1.0)
         assert(item == "World!")

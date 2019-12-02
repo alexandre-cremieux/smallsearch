@@ -1,8 +1,6 @@
 package com.search.engine
 
-import com.search.model.{
-  Document, EmptyToken, SearchTree, SomeToken, StringItem, TInfo, Token
-}
+import com.search.model.{Document, EmptyToken, Leaf, SearchTree, SomeToken, StringItem, TInfo, Token}
 
 import scala.collection.parallel.mutable.ParMap
 
@@ -39,7 +37,7 @@ import scala.collection.parallel.mutable.ParMap
  *
  */
 object Engine {
-  private val docs = ParMap[String, Document]()
+  private var tree: SearchTree[StringItem] = Leaf()
 
   /**
    * Index a document into a search tree.
@@ -52,8 +50,11 @@ object Engine {
    * @param items The items to add into the document
    */
   def index(ref: String, items: Iterator[String]): Unit = {
-    val tokens = items.zipWithIndex.map({case (item, order) => Token(item, ref, order)})
-    docs.put(ref, new Document(ref, tokens.toList))
+    val tokens = items.zipWithIndex.map({
+      case (item, order) => Token(ref, item, order)
+    }).toList
+    val document = new Document(ref, tokens)
+    this.tree = this.tree ++ document.tree
   }
 
   /**
@@ -71,16 +72,8 @@ object Engine {
         val token = Token(sanitizer(item))
         Token(token.get, 0, order)
     })
-    val resultTrees = docs.values.par
-      .map(doc => {
-        val result = new DocResult(
-          doc.name(),
-          doc.tree.searchToTree(matcher.apply)(tokens)
-        )
-        result.scoring(tokens)
-        result
-      }).toList
-    new SearchResult("", tokens, resultTrees)
+    val searchResult = this.tree.searchToList(matcher.apply)(tokens)
+    new SearchResult("", tokens, searchResult)
   }
 
   /**
@@ -96,10 +89,9 @@ object Engine {
    * @return A scored SearchResult.
    */
   def exactMatch(items: List[String], sanitizer: String => String): SearchResult = {
-    if (this.docs.isEmpty || items.isEmpty) Result.noDocumentError
+    if (this.tree.isEmpty || items.isEmpty) Result.noDocumentError
     else {
-      val matcher: MatchSelect = exactMatch(
-        token => Token(sanitizer(token.get),List()))
+      val matcher: MatchSelect = exactMatch(token => Token(sanitizer(token.get), List()))
       Engine.search(matcher, items, sanitizer)
     }
   }
@@ -112,7 +104,7 @@ object Engine {
    * @return A scored SearchResult.
    */
   def fuzzy(items: List[String], sanitizer: String => String): SearchResult = {
-    if (this.docs.isEmpty || items.isEmpty) Result.noDocumentError
+    if (this.tree.isEmpty || items.isEmpty) Result.noDocumentError
     else {
       val matcher: MatchSelect = fuzzyMatch(token => Token(sanitizer(token.get),List()))
       Engine.search(
@@ -136,8 +128,10 @@ object Engine {
   (sanitizer: Token[StringItem] => Token[StringItem])
   (l: Token[StringItem], r: Token[StringItem]):
   (Boolean, Token[StringItem]) = {
-    if (l != sanitizer(r)) (false, EmptyToken)
-    else (true, Token(r, 1))
+    val sanitized = sanitizer(r)
+    val isEqual = l == sanitized
+    if (isEqual) (true, Token(r, 1.0))
+    else (false, EmptyToken)
   }
 
   /**
@@ -174,12 +168,13 @@ object Engine {
     }
     if (distance == 0) (true, Token(r, 1))
     else l match {
+      case EmptyToken => (false, EmptyToken)
       case SomeToken(item, info) =>
-        val score = (item.item.length - distance) / item.item.length.toDouble
+        val score = (item.get.length - distance) / item.get.length.toDouble
         if (score < info.head.score) {
           (false, l)
         } else {
-          (score > 0.8, Token(r, score))
+          (false, Token(r.get, TInfo.addScore(r.info, score)))
         }
     }
   }
@@ -197,37 +192,11 @@ trait MatchSelect {
  * @param document The document name.
  * @param found The resulting tree of a search.
  */
-class DocResult(document: String, found: SearchTree[StringItem]) {
-  private var score: Double = -1
+class DocResult(document: String, found: List[Token[StringItem]], score: Double) {
 
   def name: String = this.document
 
   def getScore: Double = this.score
-
-  def found(): SearchTree[StringItem] = this.found
-
-  /**
-   * Score a document against a search result.
-   * @param searched The searche
-   * */
-  def scoring(searched: List[Token[StringItem]]): Unit = {
-    if (this.score == -1) {
-      val tokenScore = found.score
-      if (tokenScore == 0) {
-        this.score = 0
-      } else {
-        val searchedSize = searched.size
-        val ordered = this.found.collectByOrder()
-        val ordSize = ordered.size
-        val orderScore = ordSize -
-          Token.levenshteinList(searched, ordered) +
-          Math.abs(ordSize - searchedSize)
-        this.score =
-          (tokenScore / searchedSize) * 0.75 +
-            (orderScore / ordSize) * 0.25
-      }
-    }
-  }
 
   override def toString: String = {
     """
@@ -238,15 +207,68 @@ class DocResult(document: String, found: SearchTree[StringItem]) {
   }
 }
 
+object DocResult {
+  def apply
+  (document: String, found: List[Token[StringItem]], searched: List[Token[StringItem]]):
+  DocResult =
+    new DocResult(
+      document,
+      found,
+      DocResult.scoring(found, searched)
+    )
+
+  def scoring(found: List[Token[StringItem]], searched: List[Token[StringItem]]):
+  Double = {
+    val searchedSize = searched.size
+    if (searchedSize != 0) {
+      val tokenScore = {
+        val rawScore = found.flatMap(t => t.info.map(i => i.score)).sum
+        if (rawScore > searchedSize) searchedSize else rawScore
+      }
+      val ordered = {
+        def comparator(l: Token[StringItem], r: Token[StringItem]): Int = (l, r) match {
+          case (EmptyToken, EmptyToken) => 0
+          case (SomeToken(_, _), EmptyToken) => -1
+          case (EmptyToken, SomeToken(_, _)) => 1
+          case (SomeToken(_, Nil), SomeToken(_, Nil)) => 0
+          case (SomeToken(_, _), SomeToken(_, Nil)) => 1
+          case (SomeToken(_, Nil), SomeToken(_, _)) => -1
+          case (SomeToken(_, x :: _), SomeToken(_, y :: _)) => x.order.compareTo(y.order)
+        }
+        val fullList = Token
+          .sort(comparator, found.flatMap(t => t.flatOrders()).toArray)
+          .toList
+        if (fullList.size > searchedSize) fullList.distinctBy(t => t.get) else fullList
+      }
+      val orderScore = searchedSize - Token.levenshteinList(searched, ordered)
+      (tokenScore / searchedSize) * 0.75 + (orderScore / searchedSize) * 0.25
+    } else {
+      0
+    }
+  }
+}
+
 /**
  * A full search result obtained after executing a search against multiple documents.
  * @param error An error message if any.
  * @param searched The searched items
- * @param results The resulting tree.
+ * @param result The resulting tree.
  */
 class SearchResult
-(error: String, searched: List[Token[StringItem]], results:List[DocResult]) {
-  def documents(): List[DocResult] = this.results.sortBy(r => -r.getScore)
+(error: String, searched: List[Token[StringItem]], result: List[Token[StringItem]]) {
+
+  def documents(): List[DocResult] = {
+    this.result.flatMap(token => {
+      token.info.map(info => (info.doc, Token(token.get, List(info))))
+    }).groupBy(docToken => docToken._1)
+      .map(entry => {
+        val found = entry._2.map(e => e._2)
+        DocResult(entry._1, found, searched)
+      }).toList
+      .sortBy(result => result.getScore)
+      .reverse
+  }
+
   def error(): Option[String] = this.error match {
     case "" => Option.empty
     case _ => Option(this.error)
@@ -258,9 +280,10 @@ class SearchResult
       |Error: %s,
       |Results: %s
       """.format(
-      this.searched,
-      this.error,
-      this.results.sortBy(r => -r.getScore))
+        this.searched,
+        this.error,
+        this.result
+    )
 }
 
 /**
