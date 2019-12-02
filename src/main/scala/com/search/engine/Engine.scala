@@ -1,8 +1,7 @@
 package com.search.engine
 
-import com.search.model.{Document, EmptyToken, Leaf, SearchTree, SomeToken, StringItem, TInfo, Token}
-
-import scala.collection.parallel.mutable.ParMap
+import com.search.model.
+{Document, EmptyToken, Leaf, SearchTree, SomeToken, StringItem, TInfo, Token}
 
 /**
  * Content: The engine, the search result.

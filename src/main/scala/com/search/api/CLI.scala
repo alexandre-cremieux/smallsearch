@@ -240,15 +240,17 @@ object Instructions {
         .filter(s => !s.isBlank || !s.isEmpty)
       val items = params.toList
       try {
+        val start = System.currentTimeMillis()
         val result = engineSearchType(items)
-        println("Found:")
-        var count = 0
+        val end = System.currentTimeMillis()
+        println("Found in %s ms:".format(end - start))
         val docs = result.documents().filter(doc => doc.getScore > 0)
-        if (docs.isEmpty) println("Nothing")
+        if (docs.isEmpty) println("\tNothing")
         else {
+          var count = 0
           while (count < 10 && count < docs.size) {
             val doc = docs(count)
-            println("name: %s, score: %s".format(doc.name, doc.getScore))
+            println("\tdDocument name: %s, score: %s".format(doc.name, doc.getScore))
             count += 1
           }
         }
