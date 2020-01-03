@@ -184,7 +184,9 @@ object Instructions {
    */
   def readDefaultResources(instructions: Array[String], context: Variables): Unit =  {
     if (instructions.length > 1) {
-      println(Msg.wrongNumberOfArguments("DEFAULT", "", 1, instructions.length))
+      println(
+        Msg.wrongNumberOfArguments(
+          "DEFAULT", "", 1, instructions.length))
     }
     val folder = {
       if (context.resources.isDefined) context.resources.get

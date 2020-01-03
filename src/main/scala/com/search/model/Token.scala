@@ -187,11 +187,12 @@ object Token {
   }
 
   /**
-   * Add a score to token's info.
-   * @param token The token to which the score should be added
-   * @param score
-   * @tparam A
-   * @return A new token.
+   * Add a score to token's info if token is not empty.
+   *
+   * @param token The token to which the score should be added.
+   * @param score Token's score.
+   * @tparam A The inner type of the Token.
+   * @return An empty or a new token.
    */
   def apply[A <: Ordered[A]](token: Token[A], score: Double):
   Token[A] = {
@@ -245,7 +246,8 @@ object Token {
     }
   }
 
-  /**Implicit conversion of a String to a Token of type String.
+  /**
+   * Implicit conversion of a String to a Token of type String.
    *
    * By default, the order of the newly created token is set to 0.
    * @param item The item to convert
@@ -256,6 +258,7 @@ object Token {
 
   /**
    * Implicit converter from string to token.
+   *
    * @param item The string to convert to a token.
    * @return A StringItem token.
    */
@@ -266,6 +269,7 @@ object Token {
 
   /**
    * Quick sort of an array of tokens.
+   *
    * @param comp The comparator used to compare two tokens.
    * @param xs The array to sort.
    * @tparam A The type of the tokens to compare.
@@ -280,7 +284,8 @@ object Token {
       ParSeq(
         sort(comp, xs.filter(t => comparator(t) > 0)),
         xs filter (t => comparator(t) == 0),
-        sort(comp, xs.filter(t => comparator(t) < 0))).reduce(_ ++ _)
+        sort(comp, xs.filter(t => comparator(t) < 0))
+      ).flatten.toArray
     }
   }
 

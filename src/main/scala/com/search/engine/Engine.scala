@@ -1,7 +1,6 @@
 package com.search.engine
 
-import com.search.model.
-{Document, EmptyToken, Leaf, SearchTree, SomeToken, StringItem, TInfo, Token}
+import com.search.model.{Document, EmptyToken, Leaf, RBT, RBTLeaf, SearchTree, SomeToken, StringItem, TInfo, Token}
 
 /**
  * Content: The engine, the search result.
@@ -36,7 +35,7 @@ import com.search.model.
  *
  */
 object Engine {
-  private var tree: SearchTree[StringItem] = Leaf()
+  private var tree: RBT[StringItem] = RBTLeaf()
 
   /**
    * Index a document into a search tree.

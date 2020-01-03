@@ -217,10 +217,10 @@ trait SearchTree[A <: Ordered[A]] {
       this match {
         case Leaf() => Nil
         case SomeSearchTree(token, left, right) => ParSeq(
-          f(token),
           left.collect(f),
+          f(token),
           right.collect(f)
-        ).reduce(_ ++ _)
+        ).flatten.toList
       }
     }
   }
@@ -363,11 +363,10 @@ extends SearchTree[A] {
     val localResult = scoring(init, this.token)
     if (localResult._1) localResult._2
     else {
-      val lesser = this.token > init
       val subResult =
-        if (!this.left.isEmpty && lesser) {
+        if (!this.left.isEmpty && this.token > init) {
           this.left.search(scoring)(init)
-        } else if (!this.right.isEmpty) {
+        } else if (!this.right.isEmpty && this.token < init) {
           this.right.search(scoring)(init)
         } else {
           EmptyToken

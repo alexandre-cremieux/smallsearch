@@ -13,8 +13,8 @@ class Document(name: String, tokens: List[Token[StringItem]]) {
   def name(): String = this.name
 
   /*The search tree.*/
-  var tree: SearchTree[StringItem] =
+  var tree: RBT[StringItem] =
     tokens
-      .map(t => SearchTree(t))
+      .map(t => RBT(t))
       .reduceLeft((l, r) => l ++ r)
 }
