@@ -9,17 +9,21 @@ object oriented programming, portability, etc.
 
 ## Prerequisites
 
-To compile and run the project, the best way is to use sbt, the Scala build tool.
-The project is written in Scala 2.13.1 and was tested it with sbt 1.2.8 but any of
-the greater should do the work.
+### *The Scala build tool: sbt*
 
-You can download *sbt* from [Scala website](https://www.scala-sbt.org/download.html)
+```bash
+brew install sbt
+```
 
-Installing *sbt* is the best way to install Scala as pointed out by the [Scala download
-page](https://www.scala-lang.org/download/)
+Or download *sbt* from [Scala website](https://www.scala-sbt.org/download.html)
 
-If you have not installed *sbt* before, the installation will probably take some time
-in order to deploy all the dependencies on your system.
+### *Scala*
+
+```bash
+brew install coursier && coursier setup
+```
+
+More help to get start from [Scala install page](https://docs.scala-lang.org/getting-started/install-scala.html)
 
 ## Compiling, packaging, running
 
@@ -30,7 +34,7 @@ with the command line and enter:
 $sbt compile
 ```
 
-2. To run the project direclty from sbt in the root folder, enter:
+2. To run the project directly from sbt in the root folder, enter:
 
 ```
 $sbt run
@@ -110,15 +114,7 @@ A very simple sequence diagram of a search would look like this:
 
 Normally, only the engine is able to interact with the SearchTree and Token objects. The CLI would
 be the view in a MVC, the engine would be the controller, and the classes in the model package, the
-model.
-
-
-# CODE READING
-
-The code is documented and contains some notes for further improvements. The override annotated
-methods are generally not commented.
-
-Tests are given in order to provide clues on how the API of each class is intended to be used.
+model.xs
 
 
 # PERSONAL NOTES:
