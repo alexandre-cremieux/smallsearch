@@ -18,3 +18,14 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.2.15" % Test // For testing
 )
 
+// Commands
+lazy val devRun = Command.command("dev-run") { state =>
+  "clean" ::
+  "compile" ::
+  "run" ::
+  state
+}
+
+commands ++= Seq(
+  devRun
+)
