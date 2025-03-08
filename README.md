@@ -1,9 +1,6 @@
-# THE PROGRAMMING LANGUAGE
+# Small search
 
-Scala has multiple assets that make it a good language for this small project:
-immutability and surety, functional paradigm, lambdas, parallel programming features,
-object oriented programming, portability, etc.
-
+For small searches.
 
 # COMPILING AND RUNNING
 
@@ -25,33 +22,23 @@ brew install coursier && coursier setup
 
 More help to get start from [Scala install page](https://docs.scala-lang.org/getting-started/install-scala.html)
 
-## Compiling, packaging, running
+## Compile and run
 
-1. To check if the project compile from the command line, go to the root of project
-with the command line and enter:
-
-```
-$sbt compile
-```
-
-2. To run the project directly from sbt in the root folder, enter:
+### From root directory using sbt:
 
 ```
-$sbt run
+sbt compile
+sbt run
 ```
 
-3. To produce a jar from sbt in the root folder and run the tests, enter:
-
-```
-$sbt assembly
-```
-
-Then, navigate to the project folder and execute the jar with Scala:
+### Execute jar:
 
 ```
 $ cd target/scala-X-XX
 $ scala search-assembly-X-X.jar path/of/your/folder/of/txt/files
 ```
+
+### Expected prompt:
 
 If everything has gone well you should see the following prompt:
 
@@ -117,9 +104,9 @@ be the view in a MVC, the engine would be the controller, and the classes in the
 model.xs
 
 
-# PERSONAL NOTES:
+# NOTES:
 
-Implementing a good search engine is not a trivial thing, and I will not pretend that this
+I will do not pretend that this
 program is well-designed. It will surely not be suitable for production purposes and is
 largely perfectible.
 
