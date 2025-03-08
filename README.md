@@ -1,53 +1,44 @@
-# THE PROGRAMMING LANGUAGE
+# Small search
 
-Scala has multiple assets that make it a good language for this small project:
-immutability and surety, functional paradigm, lambdas, parallel programming features,
-object oriented programming, portability, etc.
-
+For small searches.
 
 # COMPILING AND RUNNING
 
 ## Prerequisites
 
-To compile and run the project, the best way is to use sbt, the Scala build tool.
-The project is written in Scala 2.13.1 and was tested it with sbt 1.2.8 but any of
-the greater should do the work.
+### *The Scala build tool: sbt*
 
-You can download *sbt* from [Scala website](https://www.scala-sbt.org/download.html)
-
-Installing *sbt* is the best way to install Scala as pointed out by the [Scala download
-page](https://www.scala-lang.org/download/)
-
-If you have not installed *sbt* before, the installation will probably take some time
-in order to deploy all the dependencies on your system.
-
-## Compiling, packaging, running
-
-1. To check if the project compile from the command line, go to the root of project
-with the command line and enter:
-
-```
-$sbt compile
+```bash
+brew install sbt
 ```
 
-2. To run the project direclty from sbt in the root folder, enter:
+Or download *sbt* from [Scala website](https://www.scala-sbt.org/download.html)
 
-```
-$sbt run
-```
+### *Scala*
 
-3. To produce a jar from sbt in the root folder and run the tests, enter:
-
-```
-$sbt assembly
+```bash
+brew install coursier && coursier setup
 ```
 
-Then, navigate to the project folder and execute the jar with Scala:
+More help to get start from [Scala install page](https://docs.scala-lang.org/getting-started/install-scala.html)
+
+## Compile and run
+
+### From root directory using sbt:
+
+```
+sbt compile
+sbt run
+```
+
+### Execute jar:
 
 ```
 $ cd target/scala-X-XX
 $ scala search-assembly-X-X.jar path/of/your/folder/of/txt/files
 ```
+
+### Expected prompt:
 
 If everything has gone well you should see the following prompt:
 
@@ -110,20 +101,12 @@ A very simple sequence diagram of a search would look like this:
 
 Normally, only the engine is able to interact with the SearchTree and Token objects. The CLI would
 be the view in a MVC, the engine would be the controller, and the classes in the model package, the
-model.
+model.xs
 
 
-# CODE READING
+# NOTES:
 
-The code is documented and contains some notes for further improvements. The override annotated
-methods are generally not commented.
-
-Tests are given in order to provide clues on how the API of each class is intended to be used.
-
-
-# PERSONAL NOTES:
-
-Implementing a good search engine is not a trivial thing, and I will not pretend that this
+I will do not pretend that this
 program is well-designed. It will surely not be suitable for production purposes and is
 largely perfectible.
 

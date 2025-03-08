@@ -1,10 +1,12 @@
 package com.search.model
 
 import org.scalatest._
+import flatspec._
+import matchers._
 import com.search.model.Token.string2Token
 
-abstract class UnitSpec extends FlatSpec
-  with Matchers with OptionValues with Inside with Inspectors
+abstract class UnitSpec extends AnyFlatSpec
+  with should.Matchers with OptionValues with Inside with Inspectors
 
 class TokenTest extends UnitSpec {
 

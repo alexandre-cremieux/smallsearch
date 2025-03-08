@@ -1,9 +1,11 @@
 package com.search.model
 
 import org.scalatest._
+import flatspec._
+import matchers._
 
-abstract class SearchTreeSpec extends FlatSpec
-  with Matchers with OptionValues with Inside with Inspectors
+abstract class SearchTreeSpec extends AnyFlatSpec
+  with should.Matchers with OptionValues with Inside with Inspectors
 
 class SearchTreeTest extends UnitSpec {
 
