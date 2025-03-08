@@ -1,8 +1,8 @@
 package com.search.io
 
 import java.io.File
-
-import scala.io.Source
+import java.nio.file.Path
+import scala.io.{BufferedSource, Source}
 
 /**
  * Exposes utilities method to read files from disk.
@@ -10,25 +10,35 @@ import scala.io.Source
 object DocumentReader {
 
   /**
-   * Read a .txt file an return it's content as an iterator over string.
+   * Read a .txt file and return it's content as an iterator over string.
    *
-   * Note: The method could be optimize by implementing a proper iterator that
-   * would iterate over the fs and close it when the iteration ends. This would save
-   * space into memory.
+   * Close the file only when the iterator is exhausted.
    *
    * @param path The path of the .txt file to read.
    * @return An iterator over the content of the file.
    */
-  def read(path: String): Iterator[String] = {
-    val source = Source.fromFile(path)
-    val list = source.getLines()
-      .flatMap(line =>
-        line.replaceAll("[^A-Za-z0-9]", " ")
-          .split(" ")
-          .map(s => s.trim.toUpperCase())
-      ).toList
-    source.close()
-    list.iterator
+  def read(path: String): Iterator[String] = read(Path.of(path))
+
+  def read(path: Path): Iterator[String] = {
+    class LineIterator(path: Path) extends Iterator[String] {
+      val source: BufferedSource = Source.fromFile(path.toFile)
+      val lines: Iterator[String] = source.getLines()
+
+      override def hasNext: Boolean =
+        if (lines.hasNext) {
+          true
+        } else {
+          source.close()
+          false
+        }
+
+      override def next(): String = lines.next()
+    }
+    new LineIterator(path).flatMap(line =>
+      line.replaceAll("[^A-Za-z0-9]", " ")
+        .split(" ")
+        .map(s => s.trim.toUpperCase())
+    )
   }
 
   /**
@@ -42,13 +52,16 @@ object DocumentReader {
     if (!directory.exists() || !directory.isDirectory) {
       List.empty
     } else {
-      directory.listFiles()
+      directory
+        .listFiles()
         .filter(_.isFile)
         .filter(file => {
           extensions.exists(ext => file.getName.endsWith(ext))
-        }).map(file => {
-        (file.getName, file.getAbsolutePath)
-      }).toList
+        })
+        .map(file => {
+          (file.getName, file.getAbsolutePath)
+        })
+        .toList
     }
   }
 }
