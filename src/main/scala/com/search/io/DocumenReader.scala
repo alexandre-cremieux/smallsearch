@@ -20,10 +20,9 @@ object DocumentReader {
   def read(path: String): Iterator[String] = read(Path.of(path))
 
   def read(path: Path): Iterator[String] = {
-    class LineIterator(path: Path) extends Iterator[String] {
-      val source: BufferedSource = Source.fromFile(path.toFile)
-      val lines: Iterator[String] = source.getLines()
-
+    val source: BufferedSource = Source.fromFile(path.toFile)
+    val lines: Iterator[String] = source.getLines()
+    new Iterator[String] {
       override def hasNext: Boolean =
         if (lines.hasNext) {
           true
@@ -31,10 +30,8 @@ object DocumentReader {
           source.close()
           false
         }
-
       override def next(): String = lines.next()
-    }
-    new LineIterator(path).flatMap(line =>
+    }.flatMap(line =>
       line.replaceAll("[^A-Za-z0-9]", " ")
         .split(" ")
         .map(s => s.trim.toUpperCase())
